@@ -4,6 +4,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+from random import sample
 import os
 
 def load_data(batch_size=64):
@@ -45,10 +46,10 @@ class DigitCNN(nn.Module):
             nn.Linear(64, 10)
         )
 
-        def forward(self, x):
-            x = self.conv_layers(x)
-            x = self.fc_layers(x)
-            return x
+    def forward(self, x):
+        x = self.conv_layers(x)
+        x = self.fc_layers(x)
+        return x
         
 def train_model(model, train_loader, epochs=5):
     criterion = nn.CrossEntropyLoss()
@@ -85,29 +86,28 @@ def evaluate_model(model, test_loader):
 
 def show_predictions(model, test_loader):
     model.eval()
-    images, labels = next(iter(test_loader))
+    dataset = test_loader.dataset
+    indices = sample(range(len(dataset)), 5)
 
-    outputs = model(images)
-    _, preds = torch.max(outputs, 1)
+    for i in indices:
+        image, _ = dataset[i]
+        output = model(image.unsqueeze(0))
+        _, pred = torch.max(output, 1)
 
-    for i in range(5):
-        plt.imshow(images[i].squeeze(), cmap="gray")
-        plt.title(f"Prediction: {preds[i].item()}")
+        plt.imshow(image.squeeze(), cmap="gray")
+        plt.title(f"Prediction: {pred.item()}")
         plt.axis("off")
         plt.show()
 
 def main():
-    # Where the model will be saved
     model_path = "digit_cnn.pth"
 
     print("Loading data...")
     train_loader, test_loader = load_data()
 
-    # Initialize the model with the type of algorithm we will use.
     print("Building model...")
     model = DigitCNN()
 
-    # Ask user if they want to use a saved model.
     use_saved = input("Load saved model? (y/n): ").strip().lower()
 
     if use_saved == "y":
@@ -115,13 +115,10 @@ def main():
             model.load_state_dict(torch.load(model_path))
             model.eval()
             print("Loaded saved model.")
-
             print("Evaluating...")
             evaluate_model(model, test_loader)
-
             print("Showing sample predictions...")
             show_predictions(model, test_loader)
-            
             return
         else:
             print("No saved model found, training new model...")
